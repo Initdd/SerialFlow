@@ -101,5 +101,4 @@ Release\SerialFlow.exe
 
 ## License
 
-Released under the **MIT License**.  
-© 2025 SerialFlow Development Team
+Released under the **MIT License**.
