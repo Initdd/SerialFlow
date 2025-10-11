@@ -2,18 +2,16 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QComboBox>
-#include <QPushButton>
-#include <QTextEdit>
-#include <QLineEdit>
-#include <QLabel>
-#include <QCheckBox>
-#include <QTimer>
 #include <QFile>
 #include <QTextStream>
 #include "serialportmanager.h"
 
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
 class QAction;
+class QLabel;
 
 class MainWindow : public QMainWindow
 {
@@ -40,7 +38,6 @@ private slots:
     void toggleDarkMode();
 
 private:
-    void setupUI();
     void createMenuBar();
     void createStatusBar();
     void loadSettings();
@@ -52,22 +49,10 @@ private:
     QString formatData(const QByteArray &data);
     void logData(const QString &data);
     
+    Ui::MainWindow *ui;
+    
     // Serial port manager
     SerialPortManager *m_serialPortManager;
-    
-    // Main UI components
-    QComboBox *m_portComboBox;
-    QComboBox *m_baudRateComboBox;
-    QComboBox *m_lineEndingComboBox;
-    QPushButton *m_connectButton;
-    QPushButton *m_refreshButton;
-    QPushButton *m_settingsButton;
-    
-    QTextEdit *m_outputTextEdit;
-    QLineEdit *m_inputLineEdit;
-    QPushButton *m_sendButton;
-    QPushButton *m_clearButton;
-    QPushButton *m_themeButton;
     
     // Status indicators
     QLabel *m_statusLabel;

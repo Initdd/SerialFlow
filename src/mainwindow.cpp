@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "ui_mainwindow.h"
 #include "settingsdialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -18,6 +19,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
     , m_serialPortManager(new SerialPortManager(this))
     , m_hexDisplay(false)
     , m_autoScroll(true)
@@ -31,9 +33,24 @@ MainWindow::MainWindow(QWidget *parent)
     , m_stopBits(QSerialPort::OneStop)
     , m_parity(QSerialPort::NoParity)
 {
-    setupUI();
+    ui->setupUi(this);
     createMenuBar();
     createStatusBar();
+    
+    // Connect UI signals
+    connect(ui->refreshButton, &QPushButton::clicked, this, &MainWindow::refreshPorts);
+    connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::toggleConnection);
+    connect(ui->settingsButton, &QPushButton::clicked, this, &MainWindow::openSettings);
+    connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::clearOutput);
+    connect(ui->themeButton, &QPushButton::clicked, this, &MainWindow::toggleDarkMode);
+    connect(ui->sendButton, &QPushButton::clicked, this, &MainWindow::sendData);
+    connect(ui->inputLineEdit, &QLineEdit::returnPressed, this, &MainWindow::sendData);
+    connect(ui->lineEndingComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+        m_lineEnding = ui->lineEndingComboBox->currentText();
+        updateLineEndingMenu();
+        saveSettings();
+    });
+    
     loadSettings();
     updateLineEndingMenu(); // Update menu to reflect loaded settings
     applyShortcuts();
@@ -58,136 +75,7 @@ MainWindow::~MainWindow()
     if (m_isLogging) {
         toggleLogging();
     }
-}
-
-void MainWindow::setupUI()
-{
-    setWindowTitle("SerialFlow - Serial Monitor");
-    resize(900, 600);
-    
-    // Central widget
-    QWidget *centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
-    
-    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-    
-    // Connection settings group (compact)
-    QGroupBox *connectionGroup = new QGroupBox("Connection", this);
-    QHBoxLayout *connectionLayout = new QHBoxLayout(connectionGroup);
-    
-    // Port selection
-    connectionLayout->addWidget(new QLabel("Port:", this));
-    m_portComboBox = new QComboBox(this);
-    m_portComboBox->setMinimumWidth(120);
-    connectionLayout->addWidget(m_portComboBox);
-    
-    // Refresh button
-    m_refreshButton = new QPushButton("↻", this);
-    m_refreshButton->setMaximumWidth(35);
-    m_refreshButton->setToolTip("Refresh ports");
-    connect(m_refreshButton, &QPushButton::clicked, this, &MainWindow::refreshPorts);
-    connectionLayout->addWidget(m_refreshButton);
-    
-    // Baud rate
-    connectionLayout->addWidget(new QLabel("Baud:", this));
-    m_baudRateComboBox = new QComboBox(this);
-    m_baudRateComboBox->addItems({"9600", "19200", "38400", "57600", "115200", "230400", "460800", "921600"});
-    m_baudRateComboBox->setCurrentText("115200");
-    m_baudRateComboBox->setMinimumWidth(100);
-    connectionLayout->addWidget(m_baudRateComboBox);
-    
-    // Line ending selection
-    connectionLayout->addWidget(new QLabel("Line Ending:", this));
-    m_lineEndingComboBox = new QComboBox(this);
-    m_lineEndingComboBox->addItems({"LF", "CR", "CRLF", "None"});
-    m_lineEndingComboBox->setCurrentText("LF");
-    m_lineEndingComboBox->setMinimumWidth(80);
-    m_lineEndingComboBox->setToolTip("Select line termination: LF (\\n), CR (\\r), CRLF (\\r\\n), or None");
-    connect(m_lineEndingComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
-        m_lineEnding = m_lineEndingComboBox->currentText();
-        updateLineEndingMenu();
-        saveSettings();
-    });
-    connectionLayout->addWidget(m_lineEndingComboBox);
-    
-    // Add spacing before connect button to make it stand out
-    connectionLayout->addSpacing(20);
-    
-    // Connect button - make it prominent
-    m_connectButton = new QPushButton("● Connect", this);
-    m_connectButton->setMinimumWidth(120);
-    m_connectButton->setMinimumHeight(35);
-    m_connectButton->setCursor(Qt::PointingHandCursor);
-    m_connectButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: #4CAF50;"  // Green
-        "   color: white;"
-        "   border: 2px solid #45a049;"
-        "   border-radius: 6px;"
-        "   padding: 5px 15px;"
-        "   font-weight: bold;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #45a049;"
-        "   border: 2px solid #3d8b40;"
-        "}"
-        "QPushButton:pressed {"
-        "   background-color: #3d8b40;"
-        "}"
-    );
-    connect(m_connectButton, &QPushButton::clicked, this, &MainWindow::toggleConnection);
-    connectionLayout->addWidget(m_connectButton);
-    
-    // Settings button
-    m_settingsButton = new QPushButton("⚙ Settings", this);
-    connect(m_settingsButton, &QPushButton::clicked, this, &MainWindow::openSettings);
-    connectionLayout->addWidget(m_settingsButton);
-    
-    connectionLayout->addStretch();
-    
-    mainLayout->addWidget(connectionGroup);
-    
-    // Output text area
-    QGroupBox *outputGroup = new QGroupBox("Received Data", this);
-    QVBoxLayout *outputLayout = new QVBoxLayout(outputGroup);
-    
-    m_outputTextEdit = new QTextEdit(this);
-    m_outputTextEdit->setReadOnly(true);
-    m_outputTextEdit->setFont(QFont("Courier", 10));
-    outputLayout->addWidget(m_outputTextEdit);
-    
-    // Clear button
-    QHBoxLayout *outputButtonLayout = new QHBoxLayout();
-    m_clearButton = new QPushButton("Clear", this);
-    connect(m_clearButton, &QPushButton::clicked, this, &MainWindow::clearOutput);
-    
-    // Theme toggle button
-    m_themeButton = new QPushButton("☾ Dark", this);
-    m_themeButton->setToolTip("Toggle dark mode (Ctrl+D)");
-    connect(m_themeButton, &QPushButton::clicked, this, &MainWindow::toggleDarkMode);
-    
-    outputButtonLayout->addStretch();
-    outputButtonLayout->addWidget(m_themeButton);
-    outputButtonLayout->addWidget(m_clearButton);
-    outputLayout->addLayout(outputButtonLayout);
-    
-    mainLayout->addWidget(outputGroup);
-    
-    // Input area
-    QGroupBox *inputGroup = new QGroupBox("Send Data", this);
-    QHBoxLayout *inputLayout = new QHBoxLayout(inputGroup);
-    
-    m_inputLineEdit = new QLineEdit(this);
-    m_inputLineEdit->setPlaceholderText("Type message to send...");
-    connect(m_inputLineEdit, &QLineEdit::returnPressed, this, &MainWindow::sendData);
-    inputLayout->addWidget(m_inputLineEdit);
-    
-    m_sendButton = new QPushButton("Send", this);
-    m_sendButton->setMinimumWidth(80);
-    connect(m_sendButton, &QPushButton::clicked, this, &MainWindow::sendData);
-    inputLayout->addWidget(m_sendButton);
-    
-    mainLayout->addWidget(inputGroup);
+    delete ui;
 }
 
 void MainWindow::createMenuBar()
@@ -309,22 +197,22 @@ void MainWindow::createStatusBar()
 
 void MainWindow::refreshPorts()
 {
-    QString currentPort = m_portComboBox->currentText();
-    m_portComboBox->clear();
+    QString currentPort = ui->portComboBox->currentText();
+    ui->portComboBox->clear();
     
     QStringList ports = m_serialPortManager->getAvailablePortNames();
     
     if (ports.isEmpty()) {
-        m_portComboBox->addItem("No ports available");
-        m_connectButton->setEnabled(false);
+        ui->portComboBox->addItem("No ports available");
+        ui->connectButton->setEnabled(false);
     } else {
-        m_portComboBox->addItems(ports);
-        m_connectButton->setEnabled(true);
+        ui->portComboBox->addItems(ports);
+        ui->connectButton->setEnabled(true);
         
         // Try to restore previous selection
-        int index = m_portComboBox->findText(currentPort);
+        int index = ui->portComboBox->findText(currentPort);
         if (index >= 0) {
-            m_portComboBox->setCurrentIndex(index);
+            ui->portComboBox->setCurrentIndex(index);
         }
     }
 }
@@ -334,13 +222,13 @@ void MainWindow::toggleConnection()
     if (m_serialPortManager->isOpen()) {
         m_serialPortManager->closePort();
     } else {
-        QString portName = m_portComboBox->currentText();
-        qint32 baudRate = m_baudRateComboBox->currentText().toInt();
+        QString portName = ui->portComboBox->currentText();
+        qint32 baudRate = ui->baudRateComboBox->currentText().toInt();
         
         if (m_serialPortManager->openPort(portName, baudRate, m_dataBits, m_stopBits, m_parity)) {
             // Use green color for successful connection
             QString colorStyle = m_darkMode ? "#4ade80" : "#16a34a";
-            m_outputTextEdit->append(QString("<span style='color: %1;'>[%2] Connected to %3 at %4 baud</span>")
+            ui->outputTextEdit->append(QString("<span style='color: %1;'>[%2] Connected to %3 at %4 baud</span>")
                 .arg(colorStyle)
                 .arg(QDateTime::currentDateTime().toString("HH:mm:ss"))
                 .arg(portName)
@@ -351,7 +239,7 @@ void MainWindow::toggleConnection()
 
 void MainWindow::sendData()
 {
-    QString text = m_inputLineEdit->text();
+    QString text = ui->inputLineEdit->text();
     if (text.isEmpty()) {
         return;
     }
@@ -372,18 +260,18 @@ void MainWindow::sendData()
     // If "None", don't add anything
     
     if (m_serialPortManager->sendText(text)) {
-        m_inputLineEdit->clear();
+        ui->inputLineEdit->clear();
         
         // Use blue color for TX in both modes
         QString colorStyle = m_darkMode ? "#60a5fa" : "#2563eb"; // Light blue for dark mode, darker blue for light mode
         
         if (m_showTimestamp) {
-            m_outputTextEdit->append(QString("<span style='color: %1;'>[%2] TX: %3</span>")
+            ui->outputTextEdit->append(QString("<span style='color: %1;'>[%2] TX: %3</span>")
                 .arg(colorStyle)
                 .arg(QDateTime::currentDateTime().toString("HH:mm:ss"))
                 .arg(text.trimmed()));
         } else {
-            m_outputTextEdit->append(QString("<span style='color: %1;'>TX: %2</span>")
+            ui->outputTextEdit->append(QString("<span style='color: %1;'>TX: %2</span>")
                 .arg(colorStyle)
                 .arg(text.trimmed()));
         }
@@ -409,10 +297,10 @@ void MainWindow::onDataReceived(const QByteArray &data)
             .arg(formattedData);
     }
     
-    m_outputTextEdit->append(formattedData);
+    ui->outputTextEdit->append(formattedData);
     
     if (m_autoScroll) {
-        QScrollBar *scrollBar = m_outputTextEdit->verticalScrollBar();
+        QScrollBar *scrollBar = ui->outputTextEdit->verticalScrollBar();
         scrollBar->setValue(scrollBar->maximum());
     }
     
@@ -426,8 +314,8 @@ void MainWindow::onConnectionStatusChanged(bool connected)
     updateConnectionStatus();
     
     if (connected) {
-        m_connectButton->setText("● Disconnect");
-        m_connectButton->setStyleSheet(
+        ui->connectButton->setText("● Disconnect");
+        ui->connectButton->setStyleSheet(
             "QPushButton {"
             "   background-color: #f44336;"  // Red
             "   color: white;"
@@ -444,13 +332,13 @@ void MainWindow::onConnectionStatusChanged(bool connected)
             "   background-color: #c41000;"
             "}"
         );
-        m_portComboBox->setEnabled(false);
-        m_baudRateComboBox->setEnabled(false);
-        m_inputLineEdit->setEnabled(true);
-        m_sendButton->setEnabled(true);
+        ui->portComboBox->setEnabled(false);
+        ui->baudRateComboBox->setEnabled(false);
+        ui->inputLineEdit->setEnabled(true);
+        ui->sendButton->setEnabled(true);
     } else {
-        m_connectButton->setText("● Connect");
-        m_connectButton->setStyleSheet(
+        ui->connectButton->setText("● Connect");
+        ui->connectButton->setStyleSheet(
             "QPushButton {"
             "   background-color: #4CAF50;"  // Green
             "   color: white;"
@@ -467,19 +355,19 @@ void MainWindow::onConnectionStatusChanged(bool connected)
             "   background-color: #3d8b40;"
             "}"
         );
-        m_portComboBox->setEnabled(true);
-        m_baudRateComboBox->setEnabled(true);
-        m_inputLineEdit->setEnabled(false);
-        m_sendButton->setEnabled(false);
+        ui->portComboBox->setEnabled(true);
+        ui->baudRateComboBox->setEnabled(true);
+        ui->inputLineEdit->setEnabled(false);
+        ui->sendButton->setEnabled(false);
         
-        m_outputTextEdit->append(QString("<span style='color: red;'>[%1] Disconnected</span>")
+        ui->outputTextEdit->append(QString("<span style='color: red;'>[%1] Disconnected</span>")
             .arg(QDateTime::currentDateTime().toString("HH:mm:ss")));
     }
 }
 
 void MainWindow::onErrorOccurred(const QString &error)
 {
-    m_outputTextEdit->append(QString("<span style='color: red;'>[%1] Error: %2</span>")
+    ui->outputTextEdit->append(QString("<span style='color: red;'>[%1] Error: %2</span>")
         .arg(QDateTime::currentDateTime().toString("HH:mm:ss"))
         .arg(error));
     
@@ -488,7 +376,7 @@ void MainWindow::onErrorOccurred(const QString &error)
 
 void MainWindow::clearOutput()
 {
-    m_outputTextEdit->clear();
+    ui->outputTextEdit->clear();
 }
 
 void MainWindow::toggleLogging()
@@ -736,47 +624,159 @@ void MainWindow::applyTheme()
         
         qApp->setPalette(darkPalette);
         
-        // Dark mode stylesheet for specific widgets
-        m_outputTextEdit->setStyleSheet(
-            "QTextEdit { "
-            "   background-color: #1e1e1e; "
-            "   color: #d4d4d4; "
-            "   border: 1px solid #3e3e3e; "
-            "   font-family: 'Courier New', monospace; "
+        // Dark mode stylesheet for the entire window
+        setStyleSheet(
+            "QMainWindow {"
+            "   background-color: #353535;"
             "}"
-        );
-        
-        // Update theme button for dark mode
-        m_themeButton->setText("☀ Light");
-        m_themeButton->setStyleSheet(
+            "QGroupBox {"
+            "   color: #ffffff;"
+            "   border: 1px solid #555555;"
+            "   border-radius: 5px;"
+            "   margin-top: 10px;"
+            "   padding-top: 10px;"
+            "   font-weight: bold;"
+            "}"
+            "QGroupBox::title {"
+            "   subcontrol-origin: margin;"
+            "   subcontrol-position: top left;"
+            "   padding: 0 5px;"
+            "   color: #ffffff;"
+            "}"
+            "QLabel {"
+            "   color: #ffffff;"
+            "}"
+            "QLineEdit {"
+            "   background-color: #2d2d2d;"
+            "   color: #ffffff;"
+            "   border: 1px solid #555555;"
+            "   border-radius: 3px;"
+            "   padding: 5px;"
+            "   selection-background-color: #2a82da;"
+            "}"
+            "QComboBox {"
+            "   background-color: #2d2d2d;"
+            "   color: #ffffff;"
+            "   border: 1px solid #555555;"
+            "   border-radius: 3px;"
+            "   padding: 5px;"
+            "}"
+            "QComboBox::drop-down {"
+            "   border: none;"
+            "}"
+            "QComboBox::down-arrow {"
+            "   image: none;"
+            "   border-left: 4px solid transparent;"
+            "   border-right: 4px solid transparent;"
+            "   border-top: 6px solid #ffffff;"
+            "   margin-right: 5px;"
+            "}"
+            "QComboBox QAbstractItemView {"
+            "   background-color: #2d2d2d;"
+            "   color: #ffffff;"
+            "   selection-background-color: #2a82da;"
+            "   border: 1px solid #555555;"
+            "}"
+            "QTextEdit {"
+            "   background-color: #1e1e1e;"
+            "   color: #d4d4d4;"
+            "   border: 1px solid #3e3e3e;"
+            "   font-family: 'Courier New', monospace;"
+            "}"
             "QPushButton {"
+            "   background-color: #3a3a3a;"
+            "   color: #ffffff;"
+            "   border: 1px solid #555555;"
+            "   border-radius: 3px;"
+            "   padding: 5px 10px;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: #4a4a4a;"
+            "}"
+            "QPushButton:pressed {"
+            "   background-color: #2a2a2a;"
+            "}"
+            "QPushButton#connectButton {"
+            "   background-color: #4CAF50;"
+            "   color: white;"
+            "   border: 2px solid #45a049;"
+            "   border-radius: 6px;"
+            "   padding: 5px 15px;"
+            "   font-weight: bold;"
+            "}"
+            "QPushButton#connectButton:hover {"
+            "   background-color: #45a049;"
+            "   border: 2px solid #3d8b40;"
+            "}"
+            "QPushButton#connectButton:pressed {"
+            "   background-color: #3d8b40;"
+            "}"
+            "QPushButton#themeButton {"
             "   color: #ffffff;"
             "   background-color: #3a3a3a;"
             "   border: 1px solid #555555;"
             "   padding: 5px 10px;"
             "   border-radius: 3px;"
             "}"
-            "QPushButton:hover {"
+            "QPushButton#themeButton:hover {"
             "   background-color: #4a4a4a;"
             "}"
+            "QMenuBar {"
+            "   background-color: #353535;"
+            "   color: #ffffff;"
+            "}"
+            "QMenuBar::item {"
+            "   background-color: transparent;"
+            "   padding: 4px 8px;"
+            "}"
+            "QMenuBar::item:selected {"
+            "   background-color: #2a82da;"
+            "}"
+            "QMenu {"
+            "   background-color: #353535;"
+            "   color: #ffffff;"
+            "   border: 1px solid #555555;"
+            "}"
+            "QMenu::item:selected {"
+            "   background-color: #2a82da;"
+            "}"
+            "QStatusBar {"
+            "   background-color: #353535;"
+            "   color: #ffffff;"
+            "}"
         );
+        
+        // Update theme button text for dark mode
+        ui->themeButton->setText("☀ Light");
     } else {
         // Light mode - reset to default palette
         qApp->setPalette(qApp->style()->standardPalette());
         
-        // Light mode stylesheet
-        m_outputTextEdit->setStyleSheet(
-            "QTextEdit { "
-            "   background-color: white; "
-            "   color: black; "
-            "   border: 1px solid #c0c0c0; "
-            "   font-family: 'Courier New', monospace; "
+        // Clear custom stylesheet to use default Qt styling
+        setStyleSheet("");
+        
+        // Restore connect button styling for light mode
+        ui->connectButton->setStyleSheet(
+            "QPushButton {"
+            "   background-color: #4CAF50;"
+            "   color: white;"
+            "   border: 2px solid #45a049;"
+            "   border-radius: 6px;"
+            "   padding: 5px 15px;"
+            "   font-weight: bold;"
+            "}"
+            "QPushButton:hover {"
+            "   background-color: #45a049;"
+            "   border: 2px solid #3d8b40;"
+            "}"
+            "QPushButton:pressed {"
+            "   background-color: #3d8b40;"
             "}"
         );
         
         // Update theme button for light mode
-        m_themeButton->setText("☾ Dark");
-        m_themeButton->setStyleSheet(
+        ui->themeButton->setText("☾ Dark");
+        ui->themeButton->setStyleSheet(
             "QPushButton {"
             "   color: #2c2c2c;"
             "   font-weight: bold;"
@@ -805,10 +805,10 @@ void MainWindow::updateLineEndingMenu()
     m_noneAction->setChecked(m_lineEnding == "None");
     
     // Update the combobox to match the current setting
-    int index = m_lineEndingComboBox->findText(m_lineEnding);
+    int index = ui->lineEndingComboBox->findText(m_lineEnding);
     if (index >= 0) {
-        m_lineEndingComboBox->blockSignals(true);  // Prevent triggering the signal
-        m_lineEndingComboBox->setCurrentIndex(index);
-        m_lineEndingComboBox->blockSignals(false);
+        ui->lineEndingComboBox->blockSignals(true);  // Prevent triggering the signal
+        ui->lineEndingComboBox->setCurrentIndex(index);
+        ui->lineEndingComboBox->blockSignals(false);
     }
 }
