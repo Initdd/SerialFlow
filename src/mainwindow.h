@@ -1,0 +1,103 @@
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QComboBox>
+#include <QPushButton>
+#include <QTextEdit>
+#include <QLineEdit>
+#include <QLabel>
+#include <QCheckBox>
+#include <QTimer>
+#include <QFile>
+#include <QTextStream>
+#include "serialportmanager.h"
+
+class QAction;
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+private slots:
+    // Serial port actions
+    void refreshPorts();
+    void toggleConnection();
+    void sendData();
+    void onDataReceived(const QByteArray &data);
+    void onConnectionStatusChanged(bool connected);
+    void onErrorOccurred(const QString &error);
+    
+    // UI actions
+    void clearOutput();
+    void toggleLogging();
+    void openSettings();
+    void updateConnectionStatus();
+    void toggleDarkMode();
+
+private:
+    void setupUI();
+    void createMenuBar();
+    void createStatusBar();
+    void loadSettings();
+    void saveSettings();
+    void applyShortcuts();
+    void applyTheme();
+    void updateLineEndingMenu();
+    
+    QString formatData(const QByteArray &data);
+    void logData(const QString &data);
+    
+    // Serial port manager
+    SerialPortManager *m_serialPortManager;
+    
+    // Main UI components
+    QComboBox *m_portComboBox;
+    QComboBox *m_baudRateComboBox;
+    QComboBox *m_lineEndingComboBox;
+    QPushButton *m_connectButton;
+    QPushButton *m_refreshButton;
+    QPushButton *m_settingsButton;
+    
+    QTextEdit *m_outputTextEdit;
+    QLineEdit *m_inputLineEdit;
+    QPushButton *m_sendButton;
+    QPushButton *m_clearButton;
+    QPushButton *m_themeButton;
+    
+    // Status indicators
+    QLabel *m_statusLabel;
+    QLabel *m_connectionStatusIcon;
+    
+    // Settings
+    bool m_hexDisplay;
+    bool m_autoScroll;
+    bool m_showTimestamp;
+    bool m_isLogging;
+    bool m_darkMode;
+    QString m_lineEnding; // Line ending: "LF", "CR", "CRLF", or "None"
+    QString m_logFilePath;
+    QFile *m_logFile;
+    QTextStream *m_logStream;
+    
+    // Connection settings
+    QSerialPort::DataBits m_dataBits;
+    QSerialPort::StopBits m_stopBits;
+    QSerialPort::Parity m_parity;
+    
+    // Shortcuts (stored as strings in settings)
+    QMap<QString, QString> m_shortcuts;
+    QList<QAction*> m_shortcutActions; // Track shortcut actions for cleanup
+    
+    // Line ending menu actions
+    QAction *m_lfAction;
+    QAction *m_crAction;
+    QAction *m_crlfAction;
+    QAction *m_noneAction;
+};
+
+#endif // MAINWINDOW_H
