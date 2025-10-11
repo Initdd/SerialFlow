@@ -1,8 +1,6 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource>
-        <!-- Add your resources here, e.g., icons, images -->
-        <!-- <file>icons/connect.png</file> -->
-        <!-- <file>icons/disconnect.png</file> -->
+        <file>icon.png</file>
     </qresource>
 </RCC>
