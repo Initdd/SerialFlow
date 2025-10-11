@@ -136,9 +136,6 @@ void SettingsDialog::loadShortcuts()
     if (m_shortcuts.contains("refresh")) {
         ui->refreshEdit->setKeySequence(QKeySequence(m_shortcuts["refresh"]));
     }
-    if (m_shortcuts.contains("theme")) {
-        ui->themeEdit->setKeySequence(QKeySequence(m_shortcuts["theme"]));
-    }
 }
 
 QMap<QString, QString> SettingsDialog::shortcuts() const
@@ -148,6 +145,5 @@ QMap<QString, QString> SettingsDialog::shortcuts() const
     currentShortcuts["send"] = ui->sendEdit->keySequence().toString();
     currentShortcuts["clear"] = ui->clearEdit->keySequence().toString();
     currentShortcuts["refresh"] = ui->refreshEdit->keySequence().toString();
-    currentShortcuts["theme"] = ui->themeEdit->keySequence().toString();
     return currentShortcuts;
 }

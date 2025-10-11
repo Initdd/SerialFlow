@@ -14,8 +14,6 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QScrollBar>
-#include <QApplication>
-#include <QPalette>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -25,7 +23,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_autoScroll(true)
     , m_showTimestamp(true)
     , m_isLogging(false)
-    , m_darkMode(false)
     , m_lineEnding("LF") // Default to LF (Line Feed)
     , m_logFile(nullptr)
     , m_logStream(nullptr)
@@ -42,7 +39,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->connectButton, &QPushButton::clicked, this, &MainWindow::toggleConnection);
     connect(ui->settingsButton, &QPushButton::clicked, this, &MainWindow::openSettings);
     connect(ui->clearButton, &QPushButton::clicked, this, &MainWindow::clearOutput);
-    connect(ui->themeButton, &QPushButton::clicked, this, &MainWindow::toggleDarkMode);
     connect(ui->sendButton, &QPushButton::clicked, this, &MainWindow::sendData);
     connect(ui->inputLineEdit, &QLineEdit::returnPressed, this, &MainWindow::sendData);
     connect(ui->lineEndingComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
@@ -54,7 +50,6 @@ MainWindow::MainWindow(QWidget *parent)
     loadSettings();
     updateLineEndingMenu(); // Update menu to reflect loaded settings
     applyShortcuts();
-    applyTheme();
     
     // Connect signals
     connect(m_serialPortManager, &SerialPortManager::dataReceived,
@@ -153,13 +148,6 @@ void MainWindow::createMenuBar()
     connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
     toolsMenu->addAction(settingsAction);
     
-    toolsMenu->addSeparator();
-    
-    QAction *toggleThemeAction = new QAction("Toggle &Dark Mode", this);
-    toggleThemeAction->setShortcut(QKeySequence("Ctrl+D"));
-    connect(toggleThemeAction, &QAction::triggered, this, &MainWindow::toggleDarkMode);
-    toolsMenu->addAction(toggleThemeAction);
-    
     // Help menu
     QMenu *helpMenu = menuBar->addMenu("&Help");
     
@@ -227,9 +215,7 @@ void MainWindow::toggleConnection()
         
         if (m_serialPortManager->openPort(portName, baudRate, m_dataBits, m_stopBits, m_parity)) {
             // Use green color for successful connection
-            QString colorStyle = m_darkMode ? "#4ade80" : "#16a34a";
-            ui->outputTextEdit->append(QString("<span style='color: %1;'>[%2] Connected to %3 at %4 baud</span>")
-                .arg(colorStyle)
+            ui->outputTextEdit->append(QString("<span style='color: #16a34a;'>[%1] Connected to %2 at %3 baud</span>")
                 .arg(QDateTime::currentDateTime().toString("HH:mm:ss"))
                 .arg(portName)
                 .arg(baudRate));
@@ -262,17 +248,13 @@ void MainWindow::sendData()
     if (m_serialPortManager->sendText(text)) {
         ui->inputLineEdit->clear();
         
-        // Use blue color for TX in both modes
-        QString colorStyle = m_darkMode ? "#60a5fa" : "#2563eb"; // Light blue for dark mode, darker blue for light mode
-        
+        // Use blue color for TX
         if (m_showTimestamp) {
-            ui->outputTextEdit->append(QString("<span style='color: %1;'>[%2] TX: %3</span>")
-                .arg(colorStyle)
+            ui->outputTextEdit->append(QString("<span style='color: #2563eb;'>[%1] TX: %2</span>")
                 .arg(QDateTime::currentDateTime().toString("HH:mm:ss"))
                 .arg(text.trimmed()));
         } else {
-            ui->outputTextEdit->append(QString("<span style='color: %1;'>TX: %2</span>")
-                .arg(colorStyle)
+            ui->outputTextEdit->append(QString("<span style='color: #2563eb;'>TX: %1</span>")
                 .arg(text.trimmed()));
         }
     }
@@ -282,18 +264,14 @@ void MainWindow::onDataReceived(const QByteArray &data)
 {
     QString formattedData = formatData(data);
     
-    // Use green color for RX in both light and dark modes
-    QString colorStyle = m_darkMode ? "#4ade80" : "#16a34a"; // Light green for dark mode, darker green for light mode
-    
+    // Use green color for RX
     if (m_showTimestamp) {
         QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
-        formattedData = QString("<span style='color: %1;'>[%2] RX: %3</span>")
-            .arg(colorStyle)
+        formattedData = QString("<span style='color: #16a34a;'>[%1] RX: %2</span>")
             .arg(timestamp)
             .arg(formattedData);
     } else {
-        formattedData = QString("<span style='color: %1;'>RX: %2</span>")
-            .arg(colorStyle)
+        formattedData = QString("<span style='color: #16a34a;'>RX: %1</span>")
             .arg(formattedData);
     }
     
@@ -488,7 +466,6 @@ void MainWindow::loadSettings()
     m_hexDisplay = settings.value("display/hexMode", false).toBool();
     m_autoScroll = settings.value("display/autoScroll", true).toBool();
     m_showTimestamp = settings.value("display/showTimestamp", true).toBool();
-    m_darkMode = settings.value("display/darkMode", false).toBool();
     m_lineEnding = settings.value("connection/lineEnding", "LF").toString();
     
     m_dataBits = static_cast<QSerialPort::DataBits>(
@@ -512,7 +489,6 @@ void MainWindow::loadSettings()
         m_shortcuts["send"] = "Ctrl+Return";
         m_shortcuts["clear"] = "Ctrl+L";
         m_shortcuts["refresh"] = "F5";
-        m_shortcuts["theme"] = "Ctrl+D";
     }
     
     // Restore window geometry
@@ -526,7 +502,6 @@ void MainWindow::saveSettings()
     settings.setValue("display/hexMode", m_hexDisplay);
     settings.setValue("display/autoScroll", m_autoScroll);
     settings.setValue("display/showTimestamp", m_showTimestamp);
-    settings.setValue("display/darkMode", m_darkMode);
     settings.setValue("connection/lineEnding", m_lineEnding);
     
     settings.setValue("connection/dataBits", static_cast<int>(m_dataBits));
@@ -586,214 +561,6 @@ void MainWindow::applyShortcuts()
         addAction(refreshAction);
         m_shortcutActions.append(refreshAction);
     }
-    
-    if (m_shortcuts.contains("theme")) {
-        QAction *themeAction = new QAction(this);
-        themeAction->setShortcut(QKeySequence(m_shortcuts["theme"]));
-        connect(themeAction, &QAction::triggered, this, &MainWindow::toggleDarkMode);
-        addAction(themeAction);
-        m_shortcutActions.append(themeAction);
-    }
-}
-
-void MainWindow::toggleDarkMode()
-{
-    m_darkMode = !m_darkMode;
-    applyTheme();
-    saveSettings();
-}
-
-void MainWindow::applyTheme()
-{
-    if (m_darkMode) {
-        // Dark mode palette
-        QPalette darkPalette;
-        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::WindowText, Qt::white);
-        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
-        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-        darkPalette.setColor(QPalette::Text, Qt::white);
-        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ButtonText, Qt::white);
-        darkPalette.setColor(QPalette::BrightText, Qt::red);
-        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
-        
-        qApp->setPalette(darkPalette);
-        
-        // Dark mode stylesheet for the entire window
-        setStyleSheet(
-            "QMainWindow {"
-            "   background-color: #353535;"
-            "}"
-            "QGroupBox {"
-            "   color: #ffffff;"
-            "   border: 1px solid #555555;"
-            "   border-radius: 5px;"
-            "   margin-top: 10px;"
-            "   padding-top: 10px;"
-            "   font-weight: bold;"
-            "}"
-            "QGroupBox::title {"
-            "   subcontrol-origin: margin;"
-            "   subcontrol-position: top left;"
-            "   padding: 0 5px;"
-            "   color: #ffffff;"
-            "}"
-            "QLabel {"
-            "   color: #ffffff;"
-            "}"
-            "QLineEdit {"
-            "   background-color: #2d2d2d;"
-            "   color: #ffffff;"
-            "   border: 1px solid #555555;"
-            "   border-radius: 3px;"
-            "   padding: 5px;"
-            "   selection-background-color: #2a82da;"
-            "}"
-            "QComboBox {"
-            "   background-color: #2d2d2d;"
-            "   color: #ffffff;"
-            "   border: 1px solid #555555;"
-            "   border-radius: 3px;"
-            "   padding: 5px;"
-            "}"
-            "QComboBox::drop-down {"
-            "   border: none;"
-            "}"
-            "QComboBox::down-arrow {"
-            "   image: none;"
-            "   border-left: 4px solid transparent;"
-            "   border-right: 4px solid transparent;"
-            "   border-top: 6px solid #ffffff;"
-            "   margin-right: 5px;"
-            "}"
-            "QComboBox QAbstractItemView {"
-            "   background-color: #2d2d2d;"
-            "   color: #ffffff;"
-            "   selection-background-color: #2a82da;"
-            "   border: 1px solid #555555;"
-            "}"
-            "QTextEdit {"
-            "   background-color: #1e1e1e;"
-            "   color: #d4d4d4;"
-            "   border: 1px solid #3e3e3e;"
-            "   font-family: 'Courier New', monospace;"
-            "}"
-            "QPushButton {"
-            "   background-color: #3a3a3a;"
-            "   color: #ffffff;"
-            "   border: 1px solid #555555;"
-            "   border-radius: 3px;"
-            "   padding: 5px 10px;"
-            "}"
-            "QPushButton:hover {"
-            "   background-color: #4a4a4a;"
-            "}"
-            "QPushButton:pressed {"
-            "   background-color: #2a2a2a;"
-            "}"
-            "QPushButton#connectButton {"
-            "   background-color: #4CAF50;"
-            "   color: white;"
-            "   border: 2px solid #45a049;"
-            "   border-radius: 6px;"
-            "   padding: 5px 15px;"
-            "   font-weight: bold;"
-            "}"
-            "QPushButton#connectButton:hover {"
-            "   background-color: #45a049;"
-            "   border: 2px solid #3d8b40;"
-            "}"
-            "QPushButton#connectButton:pressed {"
-            "   background-color: #3d8b40;"
-            "}"
-            "QPushButton#themeButton {"
-            "   color: #ffffff;"
-            "   background-color: #3a3a3a;"
-            "   border: 1px solid #555555;"
-            "   padding: 5px 10px;"
-            "   border-radius: 3px;"
-            "}"
-            "QPushButton#themeButton:hover {"
-            "   background-color: #4a4a4a;"
-            "}"
-            "QMenuBar {"
-            "   background-color: #353535;"
-            "   color: #ffffff;"
-            "}"
-            "QMenuBar::item {"
-            "   background-color: transparent;"
-            "   padding: 4px 8px;"
-            "}"
-            "QMenuBar::item:selected {"
-            "   background-color: #2a82da;"
-            "}"
-            "QMenu {"
-            "   background-color: #353535;"
-            "   color: #ffffff;"
-            "   border: 1px solid #555555;"
-            "}"
-            "QMenu::item:selected {"
-            "   background-color: #2a82da;"
-            "}"
-            "QStatusBar {"
-            "   background-color: #353535;"
-            "   color: #ffffff;"
-            "}"
-        );
-        
-        // Update theme button text for dark mode
-        ui->themeButton->setText("☀ Light");
-    } else {
-        // Light mode - reset to default palette
-        qApp->setPalette(qApp->style()->standardPalette());
-        
-        // Clear custom stylesheet to use default Qt styling
-        setStyleSheet("");
-        
-        // Restore connect button styling for light mode
-        ui->connectButton->setStyleSheet(
-            "QPushButton {"
-            "   background-color: #4CAF50;"
-            "   color: white;"
-            "   border: 2px solid #45a049;"
-            "   border-radius: 6px;"
-            "   padding: 5px 15px;"
-            "   font-weight: bold;"
-            "}"
-            "QPushButton:hover {"
-            "   background-color: #45a049;"
-            "   border: 2px solid #3d8b40;"
-            "}"
-            "QPushButton:pressed {"
-            "   background-color: #3d8b40;"
-            "}"
-        );
-        
-        // Update theme button for light mode
-        ui->themeButton->setText("☾ Dark");
-        ui->themeButton->setStyleSheet(
-            "QPushButton {"
-            "   color: #2c2c2c;"
-            "   font-weight: bold;"
-            "   background-color: #f0f0f0;"
-            "   border: 1px solid #c0c0c0;"
-            "   padding: 5px 10px;"
-            "   border-radius: 3px;"
-            "}"
-            "QPushButton:hover {"
-            "   background-color: #e0e0e0;"
-            "   color: #1a1a1a;"
-            "}"
-        );
-    }
-    
-    // Update status icon colors to work with theme
-    updateConnectionStatus();
 }
 
 void MainWindow::updateLineEndingMenu()

@@ -35,7 +35,6 @@ private slots:
     void toggleLogging();
     void openSettings();
     void updateConnectionStatus();
-    void toggleDarkMode();
 
 private:
     void createMenuBar();
@@ -43,7 +42,6 @@ private:
     void loadSettings();
     void saveSettings();
     void applyShortcuts();
-    void applyTheme();
     void updateLineEndingMenu();
     
     QString formatData(const QByteArray &data);
@@ -63,7 +61,6 @@ private:
     bool m_autoScroll;
     bool m_showTimestamp;
     bool m_isLogging;
-    bool m_darkMode;
     QString m_lineEnding; // Line ending: "LF", "CR", "CRLF", or "None"
     QString m_logFilePath;
     QFile *m_logFile;

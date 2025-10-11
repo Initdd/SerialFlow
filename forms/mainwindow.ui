@@ -261,16 +261,6 @@ QPushButton:pressed {
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="themeButton">
-           <property name="toolTip">
-            <string>Toggle dark mode (Ctrl+D)</string>
-           </property>
-           <property name="text">
-            <string>☾ Dark</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QPushButton" name="clearButton">
            <property name="text">
             <string>Clear</string>
