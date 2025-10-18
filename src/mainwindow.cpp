@@ -263,7 +263,12 @@ void MainWindow::sendData()
 void MainWindow::onDataReceived(const QByteArray &data)
 {
     QString formattedData = formatData(data);
-    
+
+    // Replace newlines with <br> for HTML display
+    formattedData.replace("\r\n", "<br>");
+    formattedData.replace("\n", "<br>");
+    formattedData.replace("\r", "<br>");
+
     // Use green color for RX
     if (m_showTimestamp) {
         QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
@@ -274,14 +279,14 @@ void MainWindow::onDataReceived(const QByteArray &data)
         formattedData = QString("<span style='color: #16a34a;'>RX: %1</span>")
             .arg(formattedData);
     }
-    
+
     ui->outputTextEdit->append(formattedData);
-    
+
     if (m_autoScroll) {
         QScrollBar *scrollBar = ui->outputTextEdit->verticalScrollBar();
         scrollBar->setValue(scrollBar->maximum());
     }
-    
+
     if (m_isLogging) {
         logData(formattedData);
     }
@@ -447,7 +452,7 @@ QString MainWindow::formatData(const QByteArray &data)
         QString hex = data.toHex(' ').toUpper();
         return hex;
     } else {
-        return QString::fromUtf8(data).trimmed();
+        return QString::fromUtf8(data);
     }
 }
 
