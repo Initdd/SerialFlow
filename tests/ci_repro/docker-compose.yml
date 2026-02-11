@@ -1,0 +1,24 @@
+services:
+  build-arch:
+    build:
+      context: .
+      dockerfile: Dockerfile.arch
+    volumes:
+      - ../../:/app
+    command: /bin/bash -c "mkdir -p build-arch-repro && cd build-arch-repro && qmake6 /app/SerialFlow.pro && make -j$(nproc)"
+
+  build-ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile.ubuntu
+    volumes:
+      - ../../:/app
+    command: /bin/bash -c "mkdir -p build-ubuntu-repro && cd build-ubuntu-repro && qmake /app/SerialFlow.pro && make -j$(nproc)"
+
+  build-windows:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    volumes:
+      - ../../:/app
+    command: /bin/bash -c "mkdir -p build-win-repro && cd build-win-repro && wine cmd /c 'qmake.exe ..\\SerialFlow.pro && mingw32-make.exe'"
