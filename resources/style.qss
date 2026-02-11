@@ -1,0 +1,45 @@
+/* Main Window Styles */
+
+/* Connect Button - Default/Disconnected State (Green) */
+QPushButton#connectButton {
+    background-color: #4CAF50;
+    color: white;
+    border: 2px solid #45a049;
+    border-radius: 6px;
+    padding: 5px 15px;
+    font-weight: bold;
+}
+
+QPushButton#connectButton:hover {
+    background-color: #45a049;
+    border: 2px solid #3d8b40;
+}
+
+QPushButton#connectButton:pressed {
+    background-color: #3d8b40;
+}
+
+/* Connect Button - Connected State (Red) */
+QPushButton#connectButton[connected="true"] {
+    background-color: #f44336;
+    border: 2px solid #da190b;
+}
+
+QPushButton#connectButton[connected="true"]:hover {
+    background-color: #da190b;
+    border: 2px solid #c41000;
+}
+
+QPushButton#connectButton[connected="true"]:pressed {
+    background-color: #c41000;
+}
+
+/* Connection Status Icon */
+QLabel#connectionStatusIcon {
+    border-radius: 8px;
+    background-color: #F44336; /* Default/Disconnected: Red */
+}
+
+QLabel#connectionStatusIcon[connected="true"] {
+    background-color: #4CAF50; /* Connected: Green */
+}
