@@ -1,0 +1,14 @@
+FROM archlinux:latest
+
+# Install dependencies matching the workflow
+RUN pacman -Syu --noconfirm && \
+    pacman -S --noconfirm base-devel qt6-base qt6-serialport git
+
+# Create a build directory
+WORKDIR /app
+
+# Copy the source code (assuming docker-compose mounts it)
+# We will use volume mounts in docker-compose so this image is reusable
+
+# Default command to run the build
+CMD ["/bin/bash", "-c", "mkdir -p build && cd build && qmake6 /app/SerialFlow.pro && make"]
