@@ -129,3 +129,5 @@ CMakeLists.txt.user*
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,qt,qtcreator,cmake
 
 build
+.qmake.stash
+.qtcreator
