@@ -34,21 +34,25 @@ jobs:
           cp resources/icon.png SerialFlow.png
 
       - name: Build AppImage
-        env:
-          QMAKE: /usr/lib/qt6/bin/qmake
         run: |
           mkdir build
           cd build
           qmake ../SerialFlow.pro
           make
           cd ..
-          cp resources/icon.png build/SerialFlow.png
-          # dynamic linuxdeployqt download
-          wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-          chmod a+x linuxdeployqt-continuous-x86_64.AppImage
+          # download linuxdeploy and Qt plugin
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod a+x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
           # build appimage
-          ./linuxdeployqt-continuous-x86_64.AppImage SerialFlow.desktop -appimage -unsupported-allow-new-glibc -qmake=$(which qmake)
-          mv SerialFlow-*.AppImage SerialFlow.AppImage
+          QMAKE=$(which qmake) ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --output appimage \
+            --executable build/SerialFlow \
+            --desktop-file SerialFlow.desktop \
+            --icon-file resources/icon.png
+          mv SerialFlow*.AppImage SerialFlow.AppImage
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
