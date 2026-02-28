@@ -44,6 +44,8 @@ jobs:
           wget -c -nv "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
           wget -c -nv "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
           chmod a+x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+          # resize icon to a valid resolution (512x512) required by linuxdeploy
+          convert resources/icon.png -resize 512x512 icon-512.png
           # build appimage
           QMAKE=$(which qmake) ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
@@ -51,7 +53,7 @@ jobs:
             --output appimage \
             --executable build/SerialFlow \
             --desktop-file SerialFlow.desktop \
-            --icon-file resources/icon.png
+            --icon-file icon-512.png
           mv SerialFlow*.AppImage SerialFlow.AppImage
           
       - name: Upload Artifact
