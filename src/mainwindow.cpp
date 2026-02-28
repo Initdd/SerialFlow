@@ -19,15 +19,14 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow),
       m_serialPortManager(new SerialPortManager(this)), m_hexDisplay(false),
       m_autoScroll(true), m_showTimestamp(true), m_isLogging(false),
-      m_lineEnding("LF") // Default to LF (Line Feed)
-      ,
+      m_lineEnding("LF"),
+
       m_logFile(nullptr), m_logStream(nullptr), m_dataBits(QSerialPort::Data8),
       m_stopBits(QSerialPort::OneStop), m_parity(QSerialPort::NoParity) {
   ui->setupUi(this);
   createMenuBar();
   createStatusBar();
 
-  // Connect UI signals
   connect(ui->refreshButton, &QPushButton::clicked, this,
           &MainWindow::refreshPorts);
   connect(ui->connectButton, &QPushButton::clicked, this,
@@ -47,10 +46,9 @@ MainWindow::MainWindow(QWidget *parent)
           });
 
   loadSettings();
-  updateLineEndingMenu(); // Update menu to reflect loaded settings
+  updateLineEndingMenu();
   applyShortcuts();
 
-  // Connect signals
   connect(m_serialPortManager, &SerialPortManager::dataReceived, this,
           &MainWindow::onDataReceived);
   connect(m_serialPortManager, &SerialPortManager::connectionStatusChanged,
@@ -58,7 +56,6 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_serialPortManager, &SerialPortManager::errorOccurred, this,
           &MainWindow::onErrorOccurred);
 
-  // Initial port refresh
   refreshPorts();
   updateConnectionStatus();
 }
@@ -75,7 +72,6 @@ void MainWindow::createMenuBar() {
   QMenuBar *menuBar = new QMenuBar(this);
   setMenuBar(menuBar);
 
-  // File menu
   QMenu *fileMenu = menuBar->addMenu("&File");
 
   QAction *startLoggingAction = new QAction("Start &Logging", this);
@@ -85,7 +81,6 @@ void MainWindow::createMenuBar() {
 
   fileMenu->addSeparator();
 
-  // Line Ending submenu
   QMenu *lineEndingMenu = fileMenu->addMenu("Line &Ending");
 
   m_lfAction = new QAction("LF (\\n)", this);
@@ -124,7 +119,6 @@ void MainWindow::createMenuBar() {
   });
   lineEndingMenu->addAction(m_noneAction);
 
-  // Create action group for mutual exclusivity
   QActionGroup *lineEndingGroup = new QActionGroup(this);
   lineEndingGroup->addAction(m_lfAction);
   lineEndingGroup->addAction(m_crAction);
@@ -138,7 +132,6 @@ void MainWindow::createMenuBar() {
   connect(exitAction, &QAction::triggered, this, &QWidget::close);
   fileMenu->addAction(exitAction);
 
-  // Tools menu
   QMenu *toolsMenu = menuBar->addMenu("&Tools");
 
   QAction *settingsAction = new QAction("&Settings", this);
@@ -146,7 +139,6 @@ void MainWindow::createMenuBar() {
   connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
   toolsMenu->addAction(settingsAction);
 
-  // Help menu
   QMenu *helpMenu = menuBar->addMenu("&Help");
 
   QAction *aboutAction = new QAction("&About", this);
@@ -170,12 +162,10 @@ void MainWindow::createStatusBar() {
   QStatusBar *statusBar = new QStatusBar(this);
   setStatusBar(statusBar);
 
-  // Connection status icon
   m_connectionStatusIcon = new QLabel(this);
   m_connectionStatusIcon->setFixedSize(16, 16);
   statusBar->addPermanentWidget(m_connectionStatusIcon);
 
-  // Status label
   m_statusLabel = new QLabel("Disconnected", this);
   statusBar->addPermanentWidget(m_statusLabel);
 }
@@ -193,7 +183,6 @@ void MainWindow::refreshPorts() {
     ui->portComboBox->addItems(ports);
     ui->connectButton->setEnabled(true);
 
-    // Try to restore previous selection
     int index = ui->portComboBox->findText(currentPort);
     if (index >= 0) {
       ui->portComboBox->setCurrentIndex(index);
@@ -210,7 +199,6 @@ void MainWindow::toggleConnection() {
 
     if (m_serialPortManager->openPort(portName, baudRate, m_dataBits,
                                       m_stopBits, m_parity)) {
-      // Use green color for successful connection
       ui->outputTextEdit->append(
           QString("<span style='color: #16a34a;'>[%1] Connected to %2 at %3 "
                   "baud</span>")
@@ -233,7 +221,6 @@ void MainWindow::sendData() {
     return;
   }
 
-  // Add line ending based on settings
   if (m_lineEnding == "LF") {
     text += "\n";
   } else if (m_lineEnding == "CR") {
@@ -241,12 +228,10 @@ void MainWindow::sendData() {
   } else if (m_lineEnding == "CRLF") {
     text += "\r\n";
   }
-  // If "None", don't add anything
 
   if (m_serialPortManager->sendText(text)) {
     ui->inputLineEdit->clear();
 
-    // Use blue color for TX
     if (m_showTimestamp) {
       ui->outputTextEdit->append(
           QString("<span style='color: #2563eb;'>[%1] TX: %2</span>")
@@ -263,12 +248,10 @@ void MainWindow::sendData() {
 void MainWindow::onDataReceived(const QByteArray &data) {
   QString formattedData = formatData(data);
 
-  // Replace newlines with <br> for HTML display
   formattedData.replace("\r\n", "<br>");
   formattedData.replace("\n", "<br>");
   formattedData.replace("\r", "<br>");
 
-  // Use green color for RX
   if (m_showTimestamp) {
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss");
     formattedData = QString("<span style='color: #16a34a;'>[%1] RX: %2</span>")
@@ -279,7 +262,7 @@ void MainWindow::onDataReceived(const QByteArray &data) {
                         .arg(formattedData);
   }
 
-  // Smart Autoscroll Logic
+  // Autoscroll only if already at the bottom before appending.
   QScrollBar *scrollBar = ui->outputTextEdit->verticalScrollBar();
   bool atBottom = (scrollBar->value() == scrollBar->maximum());
 
@@ -297,11 +280,10 @@ void MainWindow::onDataReceived(const QByteArray &data) {
 void MainWindow::onConnectionStatusChanged(bool connected) {
   updateConnectionStatus();
 
-  // Update dynamic property for styling
   ui->connectButton->setProperty("connected", connected);
   m_connectionStatusIcon->setProperty("connected", connected);
 
-  // Force style update
+  // Force stylesheet re-evaluation after dynamic property change.
   ui->connectButton->style()->unpolish(ui->connectButton);
   ui->connectButton->style()->polish(ui->connectButton);
   m_connectionStatusIcon->style()->unpolish(m_connectionStatusIcon);
@@ -339,7 +321,6 @@ void MainWindow::clearOutput() { ui->outputTextEdit->clear(); }
 
 void MainWindow::toggleLogging() {
   if (m_isLogging) {
-    // Stop logging
     if (m_logStream) {
       delete m_logStream;
       m_logStream = nullptr;
@@ -352,7 +333,6 @@ void MainWindow::toggleLogging() {
     m_isLogging = false;
     statusBar()->showMessage("Logging stopped", 3000);
   } else {
-    // Start logging
     QString fileName = QFileDialog::getSaveFileName(
         this, "Select Log File",
         QDateTime::currentDateTime().toString(
@@ -386,7 +366,6 @@ void MainWindow::toggleLogging() {
 void MainWindow::openSettings() {
   SettingsDialog dialog(this);
 
-  // Pass current settings
   dialog.setHexDisplay(m_hexDisplay);
   dialog.setAutoScroll(m_autoScroll);
   dialog.setShowTimestamp(m_showTimestamp);
@@ -396,7 +375,6 @@ void MainWindow::openSettings() {
   dialog.setShortcuts(m_shortcuts);
 
   if (dialog.exec() == QDialog::Accepted) {
-    // Apply new settings
     m_hexDisplay = dialog.hexDisplay();
     m_autoScroll = dialog.autoScroll();
     m_showTimestamp = dialog.showTimestamp();
@@ -452,7 +430,6 @@ void MainWindow::loadSettings() {
   m_parity = static_cast<QSerialPort::Parity>(
       settings.value("connection/parity", QSerialPort::NoParity).toInt());
 
-  // Load shortcuts
   settings.beginGroup("shortcuts");
   QStringList keys = settings.childKeys();
   for (const QString &key : keys) {
@@ -460,7 +437,6 @@ void MainWindow::loadSettings() {
   }
   settings.endGroup();
 
-  // Set default shortcuts if none exist
   if (m_shortcuts.isEmpty()) {
     m_shortcuts["connect"] = "Ctrl+K";
     m_shortcuts["send"] = "Ctrl+Return";
@@ -468,7 +444,6 @@ void MainWindow::loadSettings() {
     m_shortcuts["refresh"] = "F5";
   }
 
-  // Restore window geometry
   restoreGeometry(settings.value("window/geometry").toByteArray());
 }
 
@@ -484,26 +459,22 @@ void MainWindow::saveSettings() {
   settings.setValue("connection/stopBits", static_cast<int>(m_stopBits));
   settings.setValue("connection/parity", static_cast<int>(m_parity));
 
-  // Save shortcuts
   settings.beginGroup("shortcuts");
   for (auto it = m_shortcuts.constBegin(); it != m_shortcuts.constEnd(); ++it) {
     settings.setValue(it.key(), it.value());
   }
   settings.endGroup();
 
-  // Save window geometry
   settings.setValue("window/geometry", saveGeometry());
 }
 
 void MainWindow::applyShortcuts() {
-  // Clear existing shortcut actions
   for (QAction *action : m_shortcutActions) {
     removeAction(action);
     delete action;
   }
   m_shortcutActions.clear();
 
-  // Apply custom shortcuts
   if (m_shortcuts.contains("connect")) {
     QAction *connectAction = new QAction(this);
     connectAction->setShortcut(QKeySequence(m_shortcuts["connect"]));
@@ -514,7 +485,6 @@ void MainWindow::applyShortcuts() {
   }
 
   if (m_shortcuts.contains("send")) {
-    // This is handled by the line edit return press
     QAction *sendAction = new QAction(this);
     sendAction->setShortcut(QKeySequence(m_shortcuts["send"]));
     connect(sendAction, &QAction::triggered, this, &MainWindow::sendData);
@@ -541,16 +511,14 @@ void MainWindow::applyShortcuts() {
 }
 
 void MainWindow::updateLineEndingMenu() {
-  // Update the checked state of line ending menu items based on current setting
   m_lfAction->setChecked(m_lineEnding == "LF");
   m_crAction->setChecked(m_lineEnding == "CR");
   m_crlfAction->setChecked(m_lineEnding == "CRLF");
   m_noneAction->setChecked(m_lineEnding == "None");
 
-  // Update the combobox to match the current setting
   int index = ui->lineEndingComboBox->findText(m_lineEnding);
   if (index >= 0) {
-    ui->lineEndingComboBox->blockSignals(true); // Prevent triggering the signal
+    ui->lineEndingComboBox->blockSignals(true);  // avoid re-entrant saveSettings
     ui->lineEndingComboBox->setCurrentIndex(index);
     ui->lineEndingComboBox->blockSignals(false);
   }

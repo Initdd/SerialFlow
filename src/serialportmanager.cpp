@@ -90,9 +90,42 @@ QString SerialPortManager::getErrorString() const {
 }
 
 void SerialPortManager::handleReadyRead() {
-  QByteArray data = m_serialPort->readAll();
-  if (!data.isEmpty()) {
-    emit dataReceived(data);
+  processIncomingData(m_serialPort->readAll());
+}
+
+void SerialPortManager::processIncomingData(const QByteArray &data) {
+  m_receiveBuffer.append(data);
+
+  while (!m_receiveBuffer.isEmpty()) {
+    const int crPos = m_receiveBuffer.indexOf('\r');
+    const int lfPos = m_receiveBuffer.indexOf('\n');
+
+    int termPos = -1;
+    int termLen = 0;
+
+    if (crPos != -1 && (lfPos == -1 || crPos <= lfPos)) {
+      if (crPos + 1 < m_receiveBuffer.size()) {
+        if (m_receiveBuffer.at(crPos + 1) == '\n') {
+          termPos = crPos;
+          termLen = 2;  // CRLF
+        } else {
+          termPos = crPos;
+          termLen = 1;  // lone CR
+        }
+      } else {
+        // \r is the last buffered byte — wait to see if \n follows (CRLF).
+        break;
+      }
+    } else if (lfPos != -1) {
+      termPos = lfPos;
+      termLen = 1;
+    } else {
+      break;
+    }
+
+    QByteArray line = m_receiveBuffer.left(termPos + termLen);
+    m_receiveBuffer.remove(0, termPos + termLen);
+    emit dataReceived(line);
   }
 }
 

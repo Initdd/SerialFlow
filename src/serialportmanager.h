@@ -15,12 +15,10 @@ public:
     explicit SerialPortManager(QObject *parent = nullptr);
     ~SerialPortManager();
 
-    // Port detection
     QList<QSerialPortInfo> getAvailablePorts();
     QStringList getAvailablePortNames();
 
-    // Connection management
-    bool openPort(const QString &portName, 
+    bool openPort(const QString &portName,
                   qint32 baudRate,
                   QSerialPort::DataBits dataBits = QSerialPort::Data8,
                   QSerialPort::StopBits stopBits = QSerialPort::OneStop,
@@ -28,13 +26,14 @@ public:
     void closePort();
     bool isOpen() const;
 
-    // Data transmission
     bool sendData(const QByteArray &data);
     bool sendText(const QString &text);
 
-    // Port information
     QString getCurrentPortName() const;
     QString getErrorString() const;
+
+    // Public for unit-testing: feeds raw bytes into the line buffer.
+    void processIncomingData(const QByteArray &data);
 
 signals:
     void dataReceived(const QByteArray &data);
@@ -47,6 +46,7 @@ private slots:
 
 private:
     QSerialPort *m_serialPort;
+    QByteArray   m_receiveBuffer;
 };
 
 #endif // SERIALPORTMANAGER_H
