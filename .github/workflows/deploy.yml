@@ -42,6 +42,7 @@ jobs:
           qmake ../SerialFlow.pro
           make
           cd ..
+          cp resources/icon.png build/SerialFlow.png
           # dynamic linuxdeployqt download
           wget -c -nv "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
           chmod a+x linuxdeployqt-continuous-x86_64.AppImage
