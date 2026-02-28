@@ -106,6 +106,6 @@ jobs:
         with:
           overwrite: true
           files: |
-            SerialFlow-Ubuntu-AppImage/SerialFlow.AppImage
             SerialFlow-Windows/SerialFlow-Windows.zip
             SerialFlow-Arch/SerialFlow-Arch
+            SerialFlow-Ubuntu/SerialFlow-Ubuntu
