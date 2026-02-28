@@ -19,18 +19,16 @@ jobs:
         with:
           version: '6.10.1'
           modules: 'qtserialport'
-          
+
       - name: Build
         shell: cmd
         run: |
           mkdir build
           cd build
-          qmake ..\SerialFlow.pro
-          nmake
-          cd release
-          windeployqt SerialFlow.exe
-          cd ..
-          powershell Compress-Archive -Path release -DestinationPath SerialFlow-Windows.zip
+          cmake .. -DCMAKE_PREFIX_PATH="%QT_ROOT_DIR%" -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+          windeployqt Release\SerialFlow.exe
+          powershell Compress-Archive -Path Release -DestinationPath SerialFlow-Windows.zip
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -45,7 +43,7 @@ jobs:
       - name: Install dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel qt6-base qt6-serialport git
+          pacman -S --noconfirm base-devel cmake qt6-base qt6-serialport git
 
       - uses: actions/checkout@v4
       
@@ -53,8 +51,8 @@ jobs:
         run: |
           mkdir build
           cd build
-          qmake6 ../SerialFlow.pro
-          make
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
           mv SerialFlow SerialFlow-Arch
           
       - name: Upload Artifact
@@ -70,7 +68,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y qt6-base-dev qt6-serialport-dev build-essential git
+          apt-get install -y cmake qt6-base-dev qt6-serialport-dev build-essential git
 
       - uses: actions/checkout@v4
       
@@ -78,8 +76,8 @@ jobs:
         run: |
           mkdir build
           cd build
-          qmake6 ../SerialFlow.pro
-          make
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
           mv SerialFlow SerialFlow-Ubuntu
           
       - name: Upload Artifact
